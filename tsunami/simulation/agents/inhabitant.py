@@ -1,7 +1,8 @@
 class Inhabitant:
     def __init__(self):
-        self.edge = None  # position on graph
+        self.edge = None         # position on graph
         self.dead = False
+        self.evacuated = False
 
     def move(self, next_edge):
         self.edge = next_edge
