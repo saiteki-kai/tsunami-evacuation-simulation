@@ -1,7 +1,9 @@
+import os
 import sys
+
 import osmnx as ox
 
-from tsunami.config import *
+from tsunami.config import DATA_DIR
 
 ox.config(use_cache=True, log_console=True)
 
