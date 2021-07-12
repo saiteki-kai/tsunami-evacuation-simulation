@@ -7,6 +7,6 @@ from tsunami.simulation.model import EvacuationModel
 
 G = ox.load_graphml(os.path.join(DATA_DIR, "graph.xml"))
 
-model = EvacuationModel(G)
+model = EvacuationModel(G, 5, 100)
 model.init_state(population=None, shelters=None, tsunami=None)
-# model.run_iteration()
+model.run_iteration()

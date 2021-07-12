@@ -1,24 +1,24 @@
-from queue import Queue
-
 import networkx as nx
-import osmnx as ox
+
+from tsunami.simulation.link import Link, choice_link
+from tsunami.utils.roads import get_width
 
 
 class EvacuationModel:
-    def __init__(self, graph):
+    def __init__(self, graph, time_step, simulation_time=None):
         self.G = graph
         self.total_agents = 0
         self.evacuated_agents = 0
         self.dead_agents = 0
+        self.T = time_step
+        self.ST = simulation_time
+        self.k = 0
 
     def init_state(self, population, shelters, tsunami):
-        self.G = self.__init_queues()
-        self.G = self.__add_population(population)
-        self.G = self.__add_shelters(shelters)
-        self.G = self.__add_tsunami(tsunami)
-
-        for u, v, d in self.G.edges(data=True):
-            print(d["queue"])
+        self.__init_queues()
+        self.__add_population(population)
+        self.__add_shelters(shelters)
+        self.__add_tsunami(tsunami)
 
     def reset_state(self):
         self.total_agents = 0
@@ -26,36 +26,68 @@ class EvacuationModel:
         self.dead_agents = 0
 
     def step(self):
-        pass
+        print(
+            f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
+        )
+
+        for curr_node in self.G.nodes:
+            edge = choice_link(self.G, curr_node)
+
+            if edge is not None:
+                link = self.G.edges[edge]["link"]
+
+                link.update_velocity()
+                link.update_travel_time()
+
+                u, v, _ = edge
+                print(
+                    f"velocity: {link.v:.2f} m/s\t travel time: {link.t:.2f}s\t queue: [{u} -> {v}] {link.get_queue_used()}% {link.queue.qsize()}"
+                )
+
+        for curr_edge in self.G.edges:
+            edge = self.G.edges[curr_edge]
+            _, v, _ = curr_edge
+
+            if "link" in edge:
+                # dequeue
+                agents = edge["link"].dequeue(self.k, self.T)
+
+                # add agents to the next node (v)
+                self.G.nodes[v]["agents"].extend(agents)
 
     def run_iteration(self):
+        print("# ---------------------------------------------------")
+
         while not self.__finished():
             self.step()
+            self.k += 1
+
+        print("# ---------------------------------------------------")
 
     def __finished(self):
+        if self.ST is not None:
+            return self.k >= int(self.ST // self.T)
+
         return self.evacuated_agents + self.dead_agents != self.total_agents
 
     def __add_population(self, population):
+        self.total_agents = 5
+        nx.set_node_attributes(self.G, [], "agents")
         # for u, d in self.G.nodes(data=True):
         #    pass
-        self.total_agents = 5
-        return self.G
 
     def __add_shelters(self, shelters):
-        return self.G
+        pass
 
     def __add_tsunami(self, tsunami):
-        return self.G
+        pass
 
     def __init_queues(self):
-        edges = ox.graph_to_gdfs(self.G, nodes=False, fill_edge_geometry=False)
+        for e in self.G.edges:
+            edge = self.G.edges[e]
 
-        queues = {}
-        for k in self.G.edges():
-            # compute capacity
-            # capacity = e["area"] / person_size
-            queues[k] = Queue(maxsize=5)
+            length = edge["length"]
+            width = get_width(edge["highway"], edge["lanes"] if "lanes" in edge else 0)
+            area = length * width
 
-        nx.set_edge_attributes(self.G, values=queues, name="queue")
-
-        return self.G
+            edge["link"] = Link(length, width, area)
