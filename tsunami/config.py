@@ -1,9 +1,10 @@
 import os
 
 # GIS
-PLACE = "Wakabayashi Ward, Sendai, Miyagi Prefecture, Giappone"
+PLACE = "Wakabayashi Ward, Sendai, Miyagi Prefecture, Japan"
 
-BBOX = 38.2876, 38.2358, 141.0681, 140.9199
+#      north,             south,             east,               west
+BBOX = 38.27395922012957, 38.16604077987043, 141.04558177895473, 140.90821822104527
 
 POINT = 38.2200, 140.9769
 DIST = 6000
