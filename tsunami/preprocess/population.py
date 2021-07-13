@@ -1,3 +1,4 @@
+import os
 import sys
 
 import contextily as ctx
@@ -6,7 +7,7 @@ import matplotlib.pyplot as plt
 import osmnx as ox
 import pandas as pd
 
-from tsunami.config import PLACE, CRS
+from tsunami.config import PLACE, CRS, DATA_DIR
 
 ox.config(use_cache=True, log_console=True)
 
@@ -41,7 +42,10 @@ def to_osm_name(name):
 
 def main():
     data = pd.read_excel(
-        "./data/population.xlsx", sheet_name="若林区（合計）", engine="openpyxl", skiprows=1
+        os.path.join(DATA_DIR, "population.xlsx"),
+        sheet_name="若林区（合計）",
+        engine="openpyxl",
+        skiprows=1
     )
 
     points = ox.geometries_from_place(PLACE, {"place": ["quarter", "neighbourhood"]})
@@ -71,6 +75,8 @@ def main():
     print(f"\n{total} / 137142 ({round(total / 137142 * 100)}%) found")
 
     population = gpd.GeoDataFrame(pd.concat(population, ignore_index=True))
+    population.to_file(os.path.join(DATA_DIR, "population.gpkg"), driver="GPKG")
+
     population = population.to_crs(CRS)
 
     ax = population.plot(column="population", legend=True, figsize=(14, 10), edgecolor="k")

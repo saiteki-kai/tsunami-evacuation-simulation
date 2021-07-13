@@ -1,6 +1,11 @@
-import networkx as nx
+import random
 
+import networkx as nx
+import numpy as np
+
+from tsunami.simulation.agents.resident import Resident
 from tsunami.simulation.link import Link, choice_link
+from tsunami.utils.geometries import find_nearest_nodes
 from tsunami.utils.roads import get_width
 
 
@@ -72,9 +77,26 @@ class EvacuationModel:
 
     def __add_population(self, population):
         self.total_agents = 5
+
         nx.set_node_attributes(self.G, [], "agents")
-        # for u, d in self.G.nodes(data=True):
-        #    pass
+        for p in range(len(population)):
+            name = population["name"][p]
+            quantity = population["population"][p]
+            point = population["geometry"][p]
+
+            agents = [Resident(f"{name}#{i}") for i in range(quantity)]
+
+            thresh = max(quantity / 10, 50)
+            nodes = find_nearest_nodes(self.G, (point.x, point.y), thresh=thresh)
+            K = min(quantity, len(nodes))
+
+            print(f"nodes found: {K:3d}\t population: {quantity:4d}\t thresh: {thresh}")
+
+            partitions = np.array_split(agents, K)
+
+            for k in range(K):
+                n = nodes[random.randint(0, len(nodes) - 1)]
+                self.G.nodes[n]["agents"].extend(partitions[k])
 
     def __add_shelters(self, shelters):
         pass
