@@ -1,11 +1,12 @@
 import os
 import random
-import osmnx as ox
+from pathlib import Path
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
-import geopandas as gpd
-from pathlib import Path
+import osmnx as ox
 
 from tsunami.simulation.agents.resident import Resident
 from tsunami.simulation.link import Link, choice_link
@@ -19,10 +20,7 @@ def _save_and_show(fig, ax, save=False, show=True, close=True, filepath=None, dp
 
     if save:
         # default filepath, if none provided
-        if filepath is None:
-            filepath = Path(settings.imgs_folder) / "image.png"
-        else:
-            filepath = Path(filepath)
+        filepath = Path(filepath)
 
         # if save folder does not already exist, create it
         filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -57,6 +55,7 @@ def _save_and_show(fig, ax, save=False, show=True, close=True, filepath=None, dp
 
     return fig, ax
 
+
 def _config_ax(ax, crs, bbox, padding):
     # set the axis view limits to bbox + relative padding
     north, south, east, west = bbox
@@ -84,12 +83,13 @@ def _config_ax(ax, crs, bbox, padding):
 
     return ax
 
+
 def plot_graph(
-    G,ax=None,figsize=(8, 8),bgcolor="#111111",
-    node_color="w",node_size=15,node_alpha=None,node_edgecolor="none",node_zorder=1,
-    edge_color="#999999",edge_linewidth=1,edge_alpha=None,
-    show=True,close=False,save=False,filepath=None,dpi=300,
-    bbox=None, padding=0):
+        G, ax=None, figsize=(8, 8), bgcolor="#111111",
+        node_color="w", node_size=15, node_alpha=None, node_edgecolor="none", node_zorder=1,
+        edge_color="#999999", edge_linewidth=1, edge_alpha=None,
+        show=True, close=False, save=False, filepath=None, dpi=300,
+        bbox=None, padding=0):
     """
     Plot a graph.
 
@@ -173,7 +173,7 @@ def plot_graph(
         )
 
     # get spatial extents from bbox parameter or the edges' geometries
-    #padding = 0
+    # padding = 0
     if bbox is None:
         try:
             west, south, east, north = gdf_edges.total_bounds
@@ -181,7 +181,7 @@ def plot_graph(
             west, south = gdf_nodes.min()
             east, north = gdf_nodes.max()
         bbox = north, south, east, west
-        #padding = 0.02  # pad 2% to not cut off peripheral nodes' circles
+        # padding = 0.02  # pad 2% to not cut off peripheral nodes' circles
 
     # configure axis appearance, save/show figure as specified, and return
     ax = _config_ax(ax, G.graph["crs"], bbox, padding)
@@ -216,6 +216,7 @@ class EvacuationModel:
         )
 
         for curr_node in self.G.nodes:
+            # estrarre l'agente prima
             edge = choice_link(self.G, curr_node)
 
             if edge is not None:
@@ -256,9 +257,9 @@ class EvacuationModel:
         return self.evacuated_agents + self.dead_agents != self.total_agents
 
     def __add_population(self, population):
-        self.total_agents = 5
+        self.total_agents = population['population'].sum()
 
-        nx.set_node_attributes(self.G, {i: [] for i in self.G.nodes}, "agents")
+        nx.set_node_attributes(self.G, {n: [] for n in self.G.nodes}, "agents")
         for p in range(len(population)):
             name = population["name"][p]
             quantity = population["population"][p]
@@ -273,14 +274,13 @@ class EvacuationModel:
             print(f"nodes found: {K:3d}\t population: {quantity:4d}\t thresh: {thresh}")
 
             partitions = np.array_split(agents, K)
-            
+
             for k in range(K):
                 idx = random.randint(0, len(nodes) - 1) if len(nodes) > quantity else k
                 n = nodes[idx]
 
                 part = partitions[k].tolist()
                 self.G.nodes[n]["agents"].extend(part)
-
 
     def __add_shelters(self, shelters):
         pass
@@ -322,7 +322,7 @@ class EvacuationModel:
             else:
                 nc.append("#8a0900")
 
-        #ns = [0 if len(self.G.nodes[n]["agents"]) == 0 else 15 for n in self.G.nodes]
+        # ns = [0 if len(self.G.nodes[n]["agents"]) == 0 else 15 for n in self.G.nodes]
         ns = [len(self.G.nodes[n]["agents"]) for n in self.G.nodes]
 
         """
@@ -342,8 +342,7 @@ class EvacuationModel:
         __, ax = plot_graph(self.G, node_size=ns, node_color=nc, show=True, padding=0)
         ox.plot_footprints(buildings, ax=ax, show=True, color="orange", bgcolor="lightblue")
 
-        #__, ax = plot_figure_ground(self.G, node_size=ns, node_color=nc, default_width=1, edge_alpha=1, edge_color="white", show=True, network_type="all")
-        #__, ax = ox.plot_footprints(buildings, ax=None, show=False, color="orange", bgcolor="lightblue")
-        #fig, ax = ox.plot_footprints(coastline, ax=ax, show=True, color="yellow", alpha=0.2, bgcolor="lightblue")
-        #fig, __ = ox.plot_footprints(tourism, ax=ax, show=True, color="red", bgcolor="lightblue")
-
+        # __, ax = plot_figure_ground(self.G, node_size=ns, node_color=nc, default_width=1, edge_alpha=1, edge_color="white", show=True, network_type="all")
+        # __, ax = ox.plot_footprints(buildings, ax=None, show=False, color="orange", bgcolor="lightblue")
+        # fig, ax = ox.plot_footprints(coastline, ax=ax, show=True, color="yellow", alpha=0.2, bgcolor="lightblue")
+        # fig, __ = ox.plot_footprints(tourism, ax=ax, show=True, color="red", bgcolor="lightblue")
