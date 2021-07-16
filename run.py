@@ -10,6 +10,12 @@ G = ox.load_graphml(os.path.join(DATA_DIR, "graph.xml"))
 
 population = gpd.read_file(os.path.join(DATA_DIR, "population.gpkg"))
 
+#N = 100
+#for k in range(N):
+
 model = EvacuationModel(G, 5, 100)
 model.init_state(population=population, shelters=None, tsunami=None)
 # model.run_iteration()
+
+# plot things!
+model.plot_graph()
