@@ -9,6 +9,10 @@ class Resident:
         self.dead = False
         self.evacuated = False
 
+        self.orig = None
+        self.dest = None
+        self.route = None
+
     def move(self, next_edge):
         self.edge = next_edge
 

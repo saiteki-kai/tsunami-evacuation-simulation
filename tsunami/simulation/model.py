@@ -192,9 +192,13 @@ def plot_graph(
 class EvacuationModel:
     def __init__(self, graph, time_step, simulation_time=None):
         self.G = graph
+        self.shelters = []
+
+        self.agents = []
         self.total_agents = 0
         self.evacuated_agents = 0
         self.dead_agents = 0
+
         self.T = time_step
         self.ST = simulation_time
         self.k = 0
@@ -203,6 +207,8 @@ class EvacuationModel:
         self.__init_queues()
         self.__add_population(population)
         self.__add_shelters(shelters)
+        self.__assign_destinations()
+        self.__add_routes()
         self.__add_tsunami(tsunami)
 
     def reset_state(self):
@@ -223,7 +229,8 @@ class EvacuationModel:
                 link = self.G.edges[edge]["link"]
 
                 link.update_velocity()
-                link.update_travel_time()
+                new_cost = link.update_travel_time()
+                self.G.edges[edge]["cost"] = new_cost
 
                 u, v, _ = edge
                 print(
@@ -266,6 +273,7 @@ class EvacuationModel:
             point = population["geometry"][p]
 
             agents = [Resident(f"{name}#{i}") for i in range(quantity)]
+            self.agents.extend(agents)
 
             thresh = max(quantity / 10, 50) * 5
             nodes = find_nearest_nodes(self.G, (point.x, point.y), thresh=thresh)
@@ -288,6 +296,23 @@ class EvacuationModel:
     def __add_tsunami(self, tsunami):
         pass
 
+    def __assign_destinations(self):
+        pass
+        #for n in self.agents:
+        #    agent = self.agents[n]
+            # agent.dest = self.__choice_shelter(agent.origin)
+
+    def __choice_shelter(self, node):
+        gdf = ox.graph_to_gdfs(self.G, edges=False)
+        gdf.query()
+        return None
+
+    def __add_routes(self):
+        pass
+        # for n in self.agents:
+        #    agent = self.agents[n]
+        #    self.__compute_route(agent)
+
     def __init_queues(self):
         for e in self.G.edges:
             edge = self.G.edges[e]
@@ -296,7 +321,20 @@ class EvacuationModel:
             width = get_width(edge["highway"], edge["lanes"] if "lanes" in edge else 0)
             area = length * width
 
-            edge["link"] = Link(length, width, area)
+            link = Link(length, width, area)
+
+            edge["link"] = link
+            edge["cost"] = link.get_travel_time()
+
+    def compute_route(self, agent):
+        if agent.dest is None:
+            raise ValueError("Agent destination not specified!")
+
+        orig = agent.orig
+        dest = agent.dest
+
+        route = ox.shortest_path(self.G, orig, dest, weight='cost')
+        agent.route = route
 
     def plot_graph(self):
         from tsunami.config import DATA_DIR
