@@ -64,3 +64,7 @@ traitlets==5.0.5
 urllib3==1.26.6
 wcwidth==0.2.5
 xlrd==2.0.1
+
+scipy~=1.7.0
+descartes~=1.1.0
+pygame~=2.0.1
