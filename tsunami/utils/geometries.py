@@ -1,5 +1,5 @@
 import haversine as hs
-import osmnx as ox
+import geopandas as gpd
 
 
 def save(gdf, path):
@@ -8,7 +8,7 @@ def save(gdf, path):
 
 
 def load(path):
-    ox.geometries_from_xml(path)
+    return gpd.read_file(path)
 
 
 def find_nearest_nodes(graph, point, thresh=500, thresh_inc=50):
