@@ -13,3 +13,4 @@ CRS = "epsg:3857"
 
 # PATHS
 DATA_DIR = os.path.join(os.getcwd(), "data")
+OUTPUT_DIR = os.path.join(os.getcwd(), "output")
