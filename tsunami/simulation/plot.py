@@ -32,12 +32,7 @@ class ModelViewer:
         # load boundary polygon
         path = os.path.join(DATA_DIR, "boundary.gpkg")
         boundary = load(path)
-        geometry = boundary['geometry'][0]
-
-        # add boundary polygon
-        for polygon in MultiPolygon([geometry]):
-            patch = PolygonPatch(polygon, fc='w', ec='w', ls="--", lw=2, alpha=0.4, zorder=-1)
-            ax.add_patch(patch)
+        self.__add_polygon(boundary, ax, fc="w", lw=2, alpha=0.5, zorder=-1)
 
         fig.tight_layout(pad=0.0)
 
@@ -51,21 +46,16 @@ class ModelViewer:
         gdf_nodes = ox.graph_to_gdfs(self.model.G, edges=False,
                                      fill_edge_geometry=False)
 
-        ax = gdf_nodes.plot(marker=".", markersize=14, color="orange", alpha=0.5, figsize=(10, 10),
-                            aspect="equal")
+        ax = gdf_nodes.plot(marker=".", markersize=20, color="w", alpha=0.8, figsize=(10, 10))
 
         # load boundary polygon
         path = os.path.join(DATA_DIR, "districts.gpkg")
         boundary = load(path)
-        geometries = boundary['geometry']
+        cmap = plt.cm.get_cmap("hsv", len(boundary))
+        self.__add_polygon(boundary, ax, cmap=cmap, lw=0, alpha=0.5, zorder=-1)
+        self.__add_polygon(boundary, ax, fc="None", lw=2, alpha=1, zorder=1)
 
-        for geom in geometries:
-            # add boundary polygon
-            for polygon in geom:
-                patch = PolygonPatch(polygon, fc="None", ec='r', ls="--", lw=1, alpha=1, zorder=1)
-                ax.add_patch(patch)
-
-        ctx.add_basemap(ax, zoom=13, source=ctx.providers.Esri.WorldImagery, reset_extent=False)
+        ctx.add_basemap(ax, zoom=13, source=ctx.providers.Esri.WorldImagery, reset_extent=False, zorder=-2)
 
         ax.margins(0)
         ax.get_xaxis().set_visible(False)
@@ -86,16 +76,38 @@ class ModelViewer:
             filepath = os.path.join(OUTPUT_DIR, "population.png")
             plt.savefig(filepath, transparent=True)
 
-    def plot_route(self, route, show=True):
+    def plot_route(self, route, show=True, save=False):
         fig, ax = ox.plot_graph_route(self.model.G, route,
                                       orig_dest_size=50,
                                       route_linewidth=2,
-                                      node_size=0,
-                                      bgcolor='k')
+                                      node_size=0)
 
-        fig.tight_layout(pad=0.0)
+        # load boundary polygon
+        path = os.path.join(DATA_DIR, "safe_area.gpkg")
+        safe_area = load(path)
+        self.__add_polygon(safe_area, ax, fc="g", lw=2, ls="--", alpha=0.5, zorder=1)
+
+        fig.tight_layout()
+
+        if save:
+            filepath = os.path.join(OUTPUT_DIR, "route_a0.png")
+            fig.savefig(filepath, transparent=True)
 
         if show:
             fig.show()
 
         return fig, ax
+
+    @staticmethod
+    def __add_polygon(gdf, ax, cmap=None, **kwargs):
+        geometries = gdf['geometry']
+        for i, geometry in enumerate(geometries):
+            if cmap is not None:
+                kwargs["fc"] = cmap(i)
+
+            if not isinstance(geometry, MultiPolygon):
+                geometry = MultiPolygon([geometry])
+
+            for polygon in geometry:
+                patch = PolygonPatch(polygon, **kwargs)
+                ax.add_patch(patch)
