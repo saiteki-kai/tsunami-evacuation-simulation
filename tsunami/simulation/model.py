@@ -267,25 +267,26 @@ class EvacuationModel:
         self.total_agents = population['population'].sum()
 
         nx.set_node_attributes(self.G, {n: [] for n in self.G.nodes}, "agents")
+        print(population.head(4))
         for p in range(len(population)):
             name = population["name"][p]
             quantity = population["population"][p]
-            point = population["geometry"][p]
+            polygon = population["geometry"][p]
 
             agents = [Resident(f"{name}#{i}") for i in range(quantity)]
             self.agents.extend(agents)
 
-            thresh = max(quantity / 10, 50) * 5
-            nodes = find_nearest_nodes(self.G, (point.x, point.y), thresh=thresh)
-            K = min(quantity, len(nodes))
+            gdf_nodes = ox.graph_to_gdfs(self.G, edges=False, fill_edge_geometry=False)
+            nodes_indices = gdf_nodes[gdf_nodes.geometry.within(polygon)].index.values
+            K = min(quantity, len(nodes_indices))
 
-            print(f"nodes found: {K:3d}\t population: {quantity:4d}\t thresh: {thresh}")
+            print(f"nodes found: {K:3d}\t population: {quantity:4d}\t n_indices: {len(nodes_indices)}\t")
 
             partitions = np.array_split(agents, K)
 
             for k in range(K):
-                idx = random.randint(0, len(nodes) - 1) if len(nodes) > quantity else k
-                n = nodes[idx]
+                idx = random.randint(0, len(nodes_indices) - 1) if len(nodes_indices) > quantity else k
+                n = nodes_indices[idx]
 
                 part = partitions[k].tolist()
                 self.G.nodes[n]["agents"].extend(part)
@@ -339,9 +340,9 @@ class EvacuationModel:
     def plot_graph(self):
         from tsunami.config import DATA_DIR
 
-        coastline = gpd.read_file(os.path.join(DATA_DIR, "coastline.gpkg"))
-        buildings = gpd.read_file(os.path.join(DATA_DIR, "buildings.gpkg"))
-        tourism = gpd.read_file(os.path.join(DATA_DIR, "tourism.gpkg"))
+        #coastline = gpd.read_file(os.path.join(DATA_DIR, "coastline.gpkg"))
+        #buildings = gpd.read_file(os.path.join(DATA_DIR, "buildings.gpkg"))
+        #tourism = gpd.read_file(os.path.join(DATA_DIR, "tourism.gpkg"))
 
         nc = []
         for n in self.G.nodes:
@@ -362,25 +363,5 @@ class EvacuationModel:
 
         # ns = [0 if len(self.G.nodes[n]["agents"]) == 0 else 15 for n in self.G.nodes]
         ns = [len(self.G.nodes[n]["agents"]) for n in self.G.nodes]
+        plot_graph(self.G, node_size=ns, node_color=nc, show=True, padding=0)
 
-        """
-        # retain only Polygons and MultiPolygons, then plot
-        buildings = buildings[buildings["geometry"].type.isin({"Polygon", "MultiPolygon"})]
-        ax = buildings.plot(ax=None, facecolor="orange", edgecolor="none", linewidth=0, alpha=1)
-        # determine figure extents
-        if bbox is None:
-            west, south, east, north = gdf.total_bounds
-        else:
-            north, south, east, west = bbox
-
-        # configure axis appearance, save/show figure as specified, and return
-        ax = _config_ax(ax, gdf.crs, (north, south, east, west), 0)
-        """
-
-        __, ax = plot_graph(self.G, node_size=ns, node_color=nc, show=True, padding=0)
-        ox.plot_footprints(buildings, ax=ax, show=True, color="orange", bgcolor="lightblue")
-
-        # __, ax = plot_figure_ground(self.G, node_size=ns, node_color=nc, default_width=1, edge_alpha=1, edge_color="white", show=True, network_type="all")
-        # __, ax = ox.plot_footprints(buildings, ax=None, show=False, color="orange", bgcolor="lightblue")
-        # fig, ax = ox.plot_footprints(coastline, ax=ax, show=True, color="yellow", alpha=0.2, bgcolor="lightblue")
-        # fig, __ = ox.plot_footprints(tourism, ax=ax, show=True, color="red", bgcolor="lightblue")
