@@ -6,6 +6,7 @@ class Pedestrian:
         self.name = name
         self.type = type
         self.link = {}
+        self.curr_node = None
         self.edge = None
         self.dead = False
         self.evacuated = False
@@ -13,6 +14,10 @@ class Pedestrian:
         self.orig = None
         self.dest = None
         self.route = None
+
+    def set_initial_node(self, node):
+        self.orig = node
+        self.curr_node = node
 
     def move(self, next_edge):
         self.edge = next_edge
