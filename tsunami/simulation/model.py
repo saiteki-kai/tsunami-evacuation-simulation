@@ -41,21 +41,7 @@ class EvacuationModel:
             f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
         )
 
-        for curr_node in self.G.nodes:
-            # estrarre l'agente prima
-            edge = choice_link(self.G, curr_node)
-
-            if edge is not None:
-                link = self.G.edges[edge]["link"]
-
-                link.update_velocity()
-                new_cost = link.update_travel_time()
-                self.G.edges[edge]["cost"] = new_cost
-
-                u, v, _ = edge
-                print(
-                    f"velocity: {link.v:.2f} m/s\t travel time: {link.t:.2f}s\t queue: [{u} -> {v}] {link.get_queue_used()}% {link.queue.qsize()}"
-                )
+        self.update_graph()
 
         for curr_edge in self.G.edges:
             edge = self.G.edges[curr_edge]
@@ -64,6 +50,10 @@ class EvacuationModel:
             if "link" in edge:
                 # dequeue
                 agents = edge["link"].dequeue(self.k, self.T)
+
+                # move agents
+                for agent in agents:
+                    agent.update_pos(edge["link"], self.T)
 
                 # add agents to the next node (v)
                 self.G.nodes[v]["agents"].extend(agents)
@@ -158,6 +148,23 @@ class EvacuationModel:
 
             edge["link"] = link
             edge["cost"] = link.get_travel_time()
+
+    def update_graph(self):
+        for curr_node in self.G.nodes:
+            # estrarre l'agente prima
+            edge = choice_link(self.G, curr_node)
+
+            if edge is not None:
+                link = self.G.edges[edge]["link"]
+
+                link.update_velocity()
+                new_cost = link.update_travel_time()
+                self.G.edges[edge]["cost"] = new_cost
+
+                u, v, _ = edge
+                print(
+                    f"velocity: {link.v:.2f} m/s\t travel time: {link.t:.2f}s\t queue: [{u} -> {v}] {link.get_queue_used()}% {link.queue.qsize()}"
+                )
 
     def compute_route(self, agent):
         if agent.dest is None:
