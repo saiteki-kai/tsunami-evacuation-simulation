@@ -10,8 +10,7 @@ class Pedestrian:
 
         self.orig_node = None # origin node
         self.dest_node = None # destination node
-        self.route = None # path from origin to destination
-        self.curr_node_index = None # index of the current node in the route list
+        self.route = None # list of id of the nodes of the path from origin to destination
 
         self.next_node = None # the next node in the path
         self.curr_node = None # current node position
@@ -21,15 +20,16 @@ class Pedestrian:
         self.orig_node = node
         self.curr_node = node
 
-    def move(self, link, period):
+    def update_next_node(self, node):
+        self.curr_node = self.next_node
+        self.next_node = node
+
+    def update_pos(self, link, time_step):
         length = link.l
-        meter_per_step = link.__MAX_SPEED * period
+        meter_per_step = link.v * time_step
         k = meter_per_step * 100 / length
 
-        if int(k) == 100:
-            self.curr_node = self.next_node
-            self.next_node = self.route[self.curr_node_index + 1]
-        else:
+        if 0 < int(k) < 100:
             x_diff = self.next_node["x"] - self.curr_node["x"]
             y_diff = self.next_node["y"] - self.curr_node["y"]
             x_offset = x_diff / abs(x_diff) * k
