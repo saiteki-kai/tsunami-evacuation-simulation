@@ -3,6 +3,7 @@ import random
 import networkx as nx
 import numpy as np
 import osmnx as ox
+from time import time
 
 from tsunami.simulation.link import Link, choice_link
 from tsunami.simulation.pedestrian import Pedestrian
@@ -22,50 +23,6 @@ class EvacuationModel:
         self.T = time_step
         self.ST = simulation_time
         self.k = 0
-
-    def init_state(self, population, shelters, tsunami):
-        self.__init_queues()
-        self.__add_population(population)
-        self.__add_shelters(shelters)
-        self.__assign_destinations()
-        self.__add_routes()
-        self.__add_tsunami(tsunami)
-
-    def reset_state(self):
-        self.total_agents = 0
-        self.evacuated_agents = 0
-        self.dead_agents = 0
-
-    def step(self):
-        print(
-            f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
-        )
-
-        self.update_graph()
-
-        for curr_edge in self.G.edges:
-            edge = self.G.edges[curr_edge]
-            _, v, _ = curr_edge
-
-            if "link" in edge:
-                # dequeue
-                agents = edge["link"].dequeue(self.k, self.T)
-
-                # move agents
-                for agent in agents:
-                    agent.update_pos(edge["link"], self.T)
-
-                # add agents to the next node (v)
-                self.G.nodes[v]["agents"].extend(agents)
-
-    def run_iteration(self):
-        print("# ---------------------------------------------------")
-
-        while not self.__finished():
-            self.step()
-            self.k += 1
-
-        print("# ---------------------------------------------------")
 
     def __finished(self):
         if self.ST is not None:
@@ -107,8 +64,10 @@ class EvacuationModel:
 
                 n = nodes_indices[idx]
 
+                # inizializzo la posizione degli agenti
                 for agent in partitions[k]:
                     agent.curr_node = self.G.nodes[n]
+                    agent.pos = agent.curr_node["x"], agent.curr_node["y"]
 
         # Add Tourists
 
@@ -148,6 +107,53 @@ class EvacuationModel:
 
             edge["link"] = link
             edge["cost"] = link.get_travel_time()
+
+    def init_state(self, population, shelters, tsunami):
+        self.__init_queues()
+        self.__add_population(population)
+        self.__add_shelters(shelters)
+        self.__assign_destinations()
+        self.__add_routes()
+        self.__add_tsunami(tsunami)
+
+    def reset_state(self):
+        self.total_agents = 0
+        self.evacuated_agents = 0
+        self.dead_agents = 0
+
+    def step(self):
+        print(
+            f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
+        )
+
+        self.update_graph()
+
+        for curr_edge in self.G.edges:
+            edge = self.G.edges[curr_edge]
+            _, v, _ = curr_edge
+
+            if "link" in edge:
+                can_leave = lambda x: time() + self.k * self.T > x.link["enter_time"] + self.get_travel_time()
+                for agent in self.agents:
+
+                    print(f"{time() + self.k * self.T} > \
+                        {agent.link['enter_time'] + self.get_travel_time()} => {can_leave(agent)}")
+
+                    if can_leave(agent):
+                        edge["link"].dequeue(agent) # dequeue
+                        agent.update_next_node(self.G.nodes[v]) # update next node
+                    else:
+                        # move agent position
+                        agent.update_pos(self.T)
+
+    def run_iteration(self):
+        print("# ---------------------------------------------------")
+
+        while not self.__finished():
+            self.step()
+            self.k += 1
+
+        print("# ---------------------------------------------------")
 
     def update_graph(self):
         for curr_node in self.G.nodes:
