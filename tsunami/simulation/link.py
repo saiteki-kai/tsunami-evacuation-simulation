@@ -25,7 +25,6 @@ class Link:
 
     def update_travel_time(self):
         self.t = self.l / self.v
-
         return self.t
 
     def update_velocity(self):
@@ -42,26 +41,13 @@ class Link:
         else:
             return False
 
-    def dequeue(self, k, T):
+    def dequeue(self, agent):
         if self.queue.empty():
             return []
 
-        agents = []
-        for _ in range(int(self.q)):
-            if not self.queue.empty():
-                agent = self.queue.queue[0]
-                can_leave = (
-                        time() + k * T > agent.link["enter_time"] + self.get_travel_time()
-                )
-                print(
-                    f"{time() + k * T} > {agent.link['enter_time'] + self.get_travel_time()} => {can_leave}"
-                )
-
-                if can_leave:
-                    a = self.queue.get()
-                    agents.append(a)
-
-        return agents
+        if not self.queue.empty():
+            agent = self.queue.queue[0]
+            a = self.queue.get()
 
     def print_queue(self):
         print(self.queue.queue)
