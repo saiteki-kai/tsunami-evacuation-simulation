@@ -16,6 +16,8 @@ class Pedestrian:
         self.curr_node = None # current node position
         self.pos = None # spatial current position at the start or on the current edge
 
+        self.link = {} # current link with enter time
+
     def set_initial_node(self, node):
         self.orig_node = node
         self.curr_node = node
@@ -24,7 +26,8 @@ class Pedestrian:
         self.curr_node = self.next_node
         self.next_node = node
 
-    def update_pos(self, link, time_step):
+    def update_pos(self, time_step):
+        link = self.link.link
         length = link.l
         meter_per_step = link.v * time_step
         k = meter_per_step * 100 / length
@@ -39,5 +42,5 @@ class Pedestrian:
     def kill(self):
         self.dead = True
 
-    #def set_link(self, link):
-    #    self.link = {"enter_time": time(), "link": link}
+    def set_link(self, link):
+        self.link = {"enter_time": time(), "link": link}
