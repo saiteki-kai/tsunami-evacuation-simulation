@@ -3,7 +3,6 @@ import random
 import networkx as nx
 import numpy as np
 import osmnx as ox
-from time import time
 
 from tsunami.simulation.link import Link, choice_link
 from tsunami.simulation.pedestrian import Pedestrian
@@ -11,7 +10,7 @@ from tsunami.utils.roads import get_width
 
 
 class EvacuationModel:
-    def __init__(self, graph, time_step, simulation_time=None):
+    def __init__(self, graph: nx.MultiDiGraph, time_step, simulation_time=None):
         self.G = graph
         self.shelters = []
 
@@ -64,10 +63,17 @@ class EvacuationModel:
 
                 n = nodes_indices[idx]
 
-                # inizializzo la posizione degli agenti
+                # initialize agent's position and first link
                 for agent in partitions[k]:
-                    agent.curr_node = self.G.nodes[n]
-                    agent.pos = agent.curr_node["x"], agent.curr_node["y"]
+                    agent.curr_node = n
+                    node = self.G.nodes[n]
+                    agent.pos = (node["x"], node["y"])
+
+                    # set initial edge
+                    edges = self.G.out_edges(n, keys=True)
+                    link = self.G.edges[list(edges)[0]]["link"]
+                    agent.set_link(link)
+                    link.enqueue(agent)
 
         # Add Tourists
 
@@ -126,25 +132,50 @@ class EvacuationModel:
             f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
         )
 
-        self.update_graph()
+        for e in self.G.edges:
+            edge = self.G.edges[e]
+            agents = edge["link"].dequeue(self.k, self.T)
 
-        for curr_edge in self.G.edges:
-            edge = self.G.edges[curr_edge]
-            _, v, _ = curr_edge
+            if agents is not None and len(agents) > 0:
+                print(f"dequeue ({[a.name for a in agents]})")
 
-            if "link" in edge:
-                can_leave = lambda x: time() + self.k * self.T > x.link["enter_time"] + self.get_travel_time()
-                for agent in self.agents:
+            # update agent's curr_edge
+            for agent in agents:
+                min_e = choice_link(self.G, agent)
 
-                    print(f"{time() + self.k * self.T} > \
-                        {agent.link['enter_time'] + self.get_travel_time()} => {can_leave(agent)}")
+                if min_e is None:
+                    continue
 
-                    if can_leave(agent):
-                        edge["link"].dequeue(agent) # dequeue
-                        agent.update_next_node(self.G.nodes[v]) # update next node
-                    else:
-                        # move agent position
-                        agent.update_pos(self.T)
+                _, next_node, _ = min_e
+                agent.curr_node = next_node
+                # agent.curr_edge = min_e
+
+                print(f"enqueue ({agent.name})")
+                agent.set_link(self.G.edges[min_e]["link"])
+                self.G.edges[min_e]["link"].enqueue(agent)
+
+        # update Link objects
+        for e in self.G.edges:
+            edge = self.G.edges[e]
+
+            if "link" not in edge:
+                continue
+
+            link = edge["link"]
+
+            # update only if any agents is present in the edge
+            if link.queue.qsize() > 0:
+                # print(f"update link of {e} {link.queue.qsize()}")
+
+                link.update_velocity()
+                new_cost = link.update_travel_time()
+                edge["cost"] = new_cost
+
+                print((
+                    f"velocity: {link.v:.2f} m/s\t"
+                    f"travel time: {link.t:.2f}s\t"
+                    f"queue: [{e}] {link.get_queue_used()}% {link.queue.qsize()}"
+                ))
 
     def run_iteration(self):
         print("# ---------------------------------------------------")
@@ -154,23 +185,6 @@ class EvacuationModel:
             self.k += 1
 
         print("# ---------------------------------------------------")
-
-    def update_graph(self):
-        for curr_node in self.G.nodes:
-            # estrarre l'agente prima
-            edge = choice_link(self.G, curr_node)
-
-            if edge is not None:
-                link = self.G.edges[edge]["link"]
-
-                link.update_velocity()
-                new_cost = link.update_travel_time()
-                self.G.edges[edge]["cost"] = new_cost
-
-                u, v, _ = edge
-                print(
-                    f"velocity: {link.v:.2f} m/s\t travel time: {link.t:.2f}s\t queue: [{u} -> {v}] {link.get_queue_used()}% {link.queue.qsize()}"
-                )
 
     def compute_route(self, agent):
         if agent.dest is None:

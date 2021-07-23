@@ -1,6 +1,8 @@
 from queue import Queue
 from time import time
 
+from tsunami.simulation.pedestrian import Pedestrian
+
 
 class Link:
     def __init__(self, length, min_width, area):
@@ -41,46 +43,45 @@ class Link:
         else:
             return False
 
-    def dequeue(self, agent):
+    def dequeue(self, k, T):
         if self.queue.empty():
             return []
 
-        if not self.queue.empty():
-            agent = self.queue.queue[0]
-            a = self.queue.get()
+        agents = []
+        for _ in range(int(self.q)):
+            if not self.queue.empty():
+                agent = self.queue.queue[0]
+                can_leave = time() + k * T > agent.link["enter_time"] + self.get_travel_time()
+
+                # print(
+                #    f"{time() + k * T} > {agent.link['enter_time'] + self.get_travel_time()} => {can_leave}"
+                # )
+
+                if can_leave:
+                    a = self.queue.get()
+                    agents.append(a)
+
+        return agents
 
     def print_queue(self):
         print(self.queue.queue)
 
     def get_queue_used(self):
-        return round(self.queue.qsize() / self.c * 100)
+        return round(self.queue.qsize() / self.c * 100, 2)
 
     def __str__(self) -> str:
         return f"capacity: {self.c}, q: {self.q}, queue: {self.queue}"
 
 
-def choice_link(graph, curr_node):
-    if "agents" in graph.nodes[curr_node] and len(graph.nodes[curr_node]["agents"]) > 0:
+def choice_link(graph, agent: Pedestrian):
+    min_c = float("inf")
+    min_e = None
 
-        out_nodes = graph.out_edges(curr_node, keys=True)
+    for e in graph.out_edges(agent.curr_node, keys=True):
+        c = graph.edges[e]["cost"]
 
-        if len(out_nodes) < 1:
-            return None
+        if c < min_c:
+            min_c = c
+            min_e = e
 
-        min_t = float("inf")
-        min_e = None
-
-        for e in out_nodes:
-            link = graph.edges[e]["link"]
-            t = link.get_travel_time()
-
-            if t < min_t:
-                min_t = t
-                min_e = e
-
-        agent = graph.nodes[curr_node]["agents"].pop()
-        agent.set_link(graph.edges[min_e]["link"])
-
-        graph.edges[min_e]["link"].enqueue(agent)
-        return min_e
-    return None
+    return min_e
