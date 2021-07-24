@@ -23,14 +23,15 @@ class Pedestrian:
         self.curr_node = node
 
     def update_next_node(self):
-        self.curr_node = self.next_node
+        if self.next_node:
+            self.curr_node = self.next_node
 
-        next_node_index = self.route.index[self.curr_node] + 1
+        next_node_index = self.route.index(self.curr_node) + 1
         if next_node_index < len(self.route):
             self.next_node = self.route[next_node_index]
 
     def update_pos(self, time_step):
-        link = self.link.link
+        link = self.link["link"]
         length = link.l
         meter_per_step = link.v * time_step
         k = meter_per_step * 100 / length
