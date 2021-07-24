@@ -35,6 +35,7 @@ class EvacuationModel:
 
         nx.set_node_attributes(self.G, {n: [] for n in self.G.nodes}, "agents")
 
+        l = 0
         # Add Residents
         for p in range(len(population)):
             name = population["name"][p]
@@ -42,7 +43,6 @@ class EvacuationModel:
             polygon = population["geometry"][p]
 
             agents = [Pedestrian(f"{name}#{i}", "resident") for i in range(quantity)]
-            self.agents.extend(agents)
 
             gdf_nodes = ox.graph_to_gdfs(self.G, edges=False, fill_edge_geometry=False)
             nodes_indices = gdf_nodes[gdf_nodes.geometry.within(polygon)].index.values
@@ -52,6 +52,8 @@ class EvacuationModel:
 
             if K == 0:
                 continue
+            else:
+                self.agents.extend(agents)
 
             partitions = np.array_split(agents, K)
 
@@ -65,15 +67,19 @@ class EvacuationModel:
 
                 # initialize agent's position and first link
                 for agent in partitions[k]:
-                    agent.curr_node = n
-                    node = self.G.nodes[n]
-                    agent.pos = (node["x"], node["y"])
+                    agent.set_initial_node(self.G.nodes[n])
+                    agent.pos = (agent.curr_node["x"], agent.curr_node["y"])
 
                     # set initial edge
                     edges = self.G.out_edges(n, keys=True)
                     link = self.G.edges[list(edges)[0]]["link"]
                     agent.set_link(link)
                     link.enqueue(agent)
+
+                    l = l + 1
+
+        print(f"{l}/{len(self.agents)}")
+
 
         # Add Tourists
 
@@ -85,9 +91,9 @@ class EvacuationModel:
 
     def __assign_destinations(self):
         print("init destinations")
-        # for n in self.agents:
-        #    agent = self.agents[n]
-        # agent.dest = self.__choice_shelter(agent.origin)
+        for agent in self.agents:
+            agent.dest_node = self.G.nodes[100]
+            # agent.dest_node = self.__choice_shelter(agent.orig_node)
 
     def __choice_shelter(self, node):
         gdf = ox.graph_to_gdfs(self.G, edges=False)
@@ -95,10 +101,10 @@ class EvacuationModel:
         return None
 
     def __add_routes(self):
-        pass
-        # for n in self.agents:
-        #    agent = self.agents[n]
-        #    self.__compute_route(agent)
+        print("init routes")
+        for agent in self.agents:
+            self.compute_route(agent)
+            agent.update_next_node()
 
     def __init_queues(self):
         print("init queues")
@@ -132,8 +138,14 @@ class EvacuationModel:
             f"# time step {self.k} \t {round(self.k * self.T, 2):2d} / {self.ST} minutes -------------------"
         )
 
+        # update position of each agent in the queue
+        for agent in self.agents:
+            agent.update_pos(self.T)
+
         for e in self.G.edges:
             edge = self.G.edges[e]
+
+            # dequeue agents that can leave
             agents = edge["link"].dequeue(self.k, self.T)
 
             if agents is not None and len(agents) > 0:
@@ -146,9 +158,8 @@ class EvacuationModel:
                 if min_e is None:
                     continue
 
-                _, next_node, _ = min_e
-                agent.curr_node = next_node
-                # agent.curr_edge = min_e
+                _, v, _ = min_e
+                agent.curr_node = self.G.nodes[v]
 
                 print(f"enqueue ({agent.name})")
                 agent.set_link(self.G.edges[min_e]["link"])
@@ -177,6 +188,7 @@ class EvacuationModel:
                     f"queue: [{e}] {link.get_queue_used()}% {link.queue.qsize()}"
                 ))
 
+
     def run_iteration(self):
         print("# ---------------------------------------------------")
 
@@ -187,11 +199,12 @@ class EvacuationModel:
         print("# ---------------------------------------------------")
 
     def compute_route(self, agent):
-        if agent.dest is None:
+        if agent.dest_node is None:
             raise ValueError("Agent destination not specified!")
 
-        orig = agent.orig
-        dest = agent.dest
+        orig = agent.orig_node["id"]
+        dest = agent.dest_node["id"]
 
         route = ox.shortest_path(self.G, orig, dest, weight='cost')
+        route = [self.G.nodes[node_id] for node_id in route]
         agent.route = route
