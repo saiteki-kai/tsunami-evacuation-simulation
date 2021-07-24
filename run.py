@@ -30,11 +30,16 @@ def compute_route_stats(agent):
     total_travel_time /= 3600
     total_length /= 1000
     avg_velocity /= len(path) - 1
-    print(
-        f"travel_time: {total_travel_time:.2f}h\t length: {total_length:.2f}Km\t average velocity: {avg_velocity:.2f}m/s")
+    print((
+        f"travel_time: {total_travel_time:.2f}h\t "
+        f"length: {total_length:.2f}Km\t "
+        f"average velocity: {avg_velocity:.2f}m/s"
+    ))
 
 
 G = ox.load_graphml(os.path.join(DATA_DIR, "graph.xml"))
+for n in G.nodes:
+    G.nodes[n]["id"] = n
 
 population = gpd.read_file(os.path.join(DATA_DIR, "districts.gpkg"))
 
@@ -42,23 +47,27 @@ population = gpd.read_file(os.path.join(DATA_DIR, "districts.gpkg"))
 # population = population.head(1)
 # population["population"][0] = 1
 
-model = EvacuationModel(G, 5, 10)
+model = EvacuationModel(G, 1, 10)
 model.init_state(population=population, shelters=None, tsunami=None)
 
 a0 = model.agents[0]
 a0.orig = list(G)[13]
 a0.dest = list(G)[1]
 
-model.compute_route(a0)
-compute_route_stats(a0)
-
-# model.run_iteration()
-
-model.compute_route(a0)
-compute_route_stats(a0)
+# model.compute_route(a0)
+# compute_route_stats(a0)
 
 viewer = ModelViewer(model)
+for i in range(10):
+    viewer.plot_agents()
+    model.step()
+viewer.plot_agents()
+
+# model.compute_route(a0)
+# compute_route_stats(a0)
+
+# viewer = ModelViewer(model)
 # viewer.interactive_graph()
 # viewer.plot_street()
 # viewer.plot_population(save=True)
-viewer.plot_route(a0.route, save=True, show=False)
+# viewer.plot_route(a0.route, save=True, show=False)
