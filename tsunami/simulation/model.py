@@ -80,7 +80,6 @@ class EvacuationModel:
 
         print(f"{l}/{len(self.agents)}")
 
-
         # Add Tourists
 
     def __add_shelters(self, shelters):
@@ -102,9 +101,7 @@ class EvacuationModel:
 
     def __add_routes(self):
         print("init routes")
-        for agent in self.agents:
-            self.compute_route(agent)
-            agent.update_next_node()
+        self.compute_routes()
 
     def __init_queues(self):
         print("init queues")
@@ -140,6 +137,9 @@ class EvacuationModel:
 
         # update position of each agent in the queue
         for agent in self.agents:
+            if agent.next_node is None:
+                print("Boh...")
+                continue
             agent.update_pos(self.T)
 
         for e in self.G.edges:
@@ -188,7 +188,6 @@ class EvacuationModel:
                     f"queue: [{e}] {link.get_queue_used()}% {link.queue.qsize()}"
                 ))
 
-
     def run_iteration(self):
         print("# ---------------------------------------------------")
 
@@ -197,6 +196,22 @@ class EvacuationModel:
             self.k += 1
 
         print("# ---------------------------------------------------")
+
+    def compute_routes(self):
+        agents = [a for a in self.agents
+                  if a.orig_node is not None
+                  and a.dest_node is not None
+                  and "id" in a.orig_node
+                  and "id" in a.dest_node]
+
+        orig = [a.orig_node["id"] for a in agents]
+        dest = [a.dest_node["id"] for a in agents]
+
+        routes = ox.shortest_path(self.G, orig, dest, weight='cost')
+
+        for i in range(len(routes)):
+            agents[i].route = [self.G.nodes[node_id] for node_id in routes[i]]
+            agents[i].set_next_node()
 
     def compute_route(self, agent):
         if agent.dest_node is None:
