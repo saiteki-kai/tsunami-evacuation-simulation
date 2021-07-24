@@ -14,15 +14,21 @@ class ModelViewer:
     def __init__(self, model):
         self.model = model
 
-    def plot_agents(self, agents, ax=None, show=True):
-        fig, __ = plt.subplots()
-        x = [agent.pos[0] for agent in agents]
-        y = [agent.pos[1] for agent in agents]
-        ax.scatter(x, y, color='green')
+    def plot_agents(self):
+        fig, ax = ox.plot_graph(self.model.G,
+                                node_size=0,
+                                edge_linewidth=1,
+                                bgcolor="#0b3496",
+                                figsize=(9, 9),
+                                show=False)
+
+        positions = [a.pos for a in self.model.agents if a.pos is not None]
+        x = [p[0] for p in positions]
+        y = [p[1] for p in positions]
+        ax.scatter(x, y, c="g", alpha=0.8, edgecolors='none')
+
         fig.tight_layout(pad=0.0)
-        if show:
-            fig.show()
-        return fig, ax
+        fig.show()
 
     def plot_street(self, show=True):
         # edge colors by travel time
@@ -77,8 +83,8 @@ class ModelViewer:
         self.__add_polygon(boundary, ax, cmap=cmap, lw=0, alpha=0.5, zorder=-1)
         self.__add_polygon(boundary, ax, fc="None", lw=2, alpha=1, zorder=1)
 
-
-        ctx.add_basemap(ax, zoom=13, source=ctx.providers.Esri.WorldImagery, reset_extent=False, zorder=-2)
+        ctx.add_basemap(ax, zoom=13, source=ctx.providers.Esri.WorldImagery, reset_extent=False,
+                        zorder=-2)
 
         ax.margins(0)
         ax.get_xaxis().set_visible(False)
