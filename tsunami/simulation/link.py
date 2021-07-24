@@ -77,7 +77,7 @@ def choice_link(graph, agent: Pedestrian):
     min_c = float("inf")
     min_e = None
 
-    for e in graph.out_edges(agent.curr_node, keys=True):
+    for e in graph.out_edges(agent.curr_node["id"], keys=True):
         c = graph.edges[e]["cost"]
 
         if c < min_c:
